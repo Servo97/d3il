@@ -7,10 +7,13 @@ import json
 import numpy as np
 from copy import deepcopy
 
-import gym
+import gymnasium as gym
 try:
-    import d4rl
-except:
+    import importlib.util as _importlib_util
+    _D4RL_AVAILABLE = _importlib_util.find_spec("d4rl") is not None
+except Exception:
+    _D4RL_AVAILABLE = False
+if not _D4RL_AVAILABLE:
     print("WARNING: could not load d4rl environments!")
 
 import agents.models.robomimic.envs.env_base as EB
@@ -62,7 +65,8 @@ class EnvGym(EB.EnvBase):
             done (bool): whether the task is done
             info (dict): extra information
         """
-        obs, reward, done, info = self.env.step(action)
+        obs, reward, terminated, truncated, info = self.env.step(action)
+        done = bool(terminated or truncated)
         self._current_obs = obs
         self._current_reward = reward
         self._current_done = done
@@ -75,7 +79,8 @@ class EnvGym(EB.EnvBase):
         Returns:
             observation (dict): initial observation dictionary.
         """
-        self._current_obs = self.env.reset()
+        obs, info = self.env.reset()
+        self._current_obs = obs
         self._current_reward = None
         self._current_done = None
         return self.get_observation(self._current_obs)

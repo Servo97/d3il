@@ -1,10 +1,9 @@
-import os
 import numpy as np
 import random
 import pickle
 
-import gym
-import gym_pushing
+import gymnasium as gym
+from environments.d3il.envs.gym_pushing_env import gym_pushing as _gp  # noqa: F401
 
 
 env = gym.make('pushing-v0')

@@ -3,7 +3,7 @@ import copy
 
 import cv2
 import numpy as np
-from gym.spaces import Box
+from gymnasium.spaces import Box
 
 from environments.d3il.d3il_sim.core import Scene
 from environments.d3il.d3il_sim.core.logger import CamLogger, ObjectLogger
@@ -107,8 +107,7 @@ class BlockContextManager:
         blue_pos = context[2][0]
         blue_quat = context[2][1]
 
-        target_pos = context[3][0]
-        target_quat = context[3][1]
+    # target position and quat are not needed here; target object is set elsewhere
 
         self.scene.set_obj_pos_and_quat(
             [red_pos[0], red_pos[1], 0],
@@ -216,10 +215,7 @@ class CubeStacking_Env(GymEnvWrapper):
 
         # joint state
         joint_pos = self.robot.current_j_pos
-        joint_vel = self.robot.current_j_vel
         gripper_width = np.array([self.robot.gripper_width])
-
-        tcp_pos = self.robot.current_c_pos
         tcp_quad = self.robot.current_c_quat
 
         return np.concatenate((joint_pos, gripper_width)), joint_pos, tcp_quad
@@ -253,17 +249,13 @@ class CubeStacking_Env(GymEnvWrapper):
         blue_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box))[-1:])
         # blue_box_quat = np.concatenate((np.sin(blue_box_quat), np.cos(blue_box_quat)))
 
-        target_pos = self.scene.get_obj_pos(self.target_box) #- robot_c_pos
-        target_quat = self.scene.get_obj_quat(self.target_box)
+    # target information not needed for observation vector here
 
         env_state = np.concatenate(
             [
-                # robot_state[:-1],
-                # quat2euler(robot_c_quat),
-                # joint_state[:-1],
-                # gripper_width,
-                # robot_c_pos,
-                # robot_c_quat,
+                j_state,
+                robot_c_pos,
+                robot_c_quat,
                 red_box_pos,
                 red_box_quat,
                 green_box_pos,
@@ -329,8 +321,6 @@ class CubeStacking_Env(GymEnvWrapper):
         )
 
     def step(self, action, gripper_width=None, desired_vel=None, desired_acc=None):
-
-        j_pos = action[:7]
         # j_vel = action[7:14]
         gripper_width = action[-1]
 
@@ -363,20 +353,16 @@ class CubeStacking_Env(GymEnvWrapper):
 
         self.controller.setSetPoint(action[:-1])#, desired_vel=desired_vel, desired_acc=desired_acc)
         # self.controller.setSetPoint(action)#, desired_vel=j_vel, desired_acc=desired_acc)
-        self.controller.executeControllerTimeSteps(
-            self.robot, self.n_substeps, block=False
-        )
-
+        self.controller.executeControllerTimeSteps(self.robot, self.n_substeps, block=False)
         observation = self.get_observation()
         reward = self.get_reward()
-        done = self.is_finished()
+        terminated = self._check_early_termination() or self.terminated
+        truncated = self.env_step_counter >= self.max_steps_per_episode - 1
 
         for i in range(self.n_substeps):
             self.scene.next_step()
 
-        debug_info = {}
-        if self.debug:
-            debug_info = self.debug_msg()
+        # optional debug info not used in info dict
 
         self.env_step_counter += 1
 
@@ -386,11 +372,14 @@ class CubeStacking_Env(GymEnvWrapper):
         mode = ''
         mode = mode.join(mode_encoding)
 
-        return observation, reward, done, {'mode': mode,
-                                           'success':  self.success,
-                                           'success_1': len(mode) > 0,
-                                           'success_2': len(mode) > 1,
-                                           'mean_distance': mean_distance}
+        info = {
+            'mode': mode,
+            'success': self.success,
+            'success_1': len(mode) > 0,
+            'success_2': len(mode) > 1,
+            'mean_distance': mean_distance,
+        }
+        return observation, reward, terminated, truncated, info
 
     def check_mode(self):
 
@@ -446,7 +435,9 @@ class CubeStacking_Env(GymEnvWrapper):
 
         return False
 
-    def reset(self, random=True, context=None):
+    def reset(self, *, seed: int | None = None, options: dict | None = None, random=True, context=None):
+        if seed is not None:
+            super().seed(seed)
         self.terminated = False
         self.env_step_counter = 0
         self.episode += 1
@@ -455,9 +446,11 @@ class CubeStacking_Env(GymEnvWrapper):
         self.mode_encoding = []
 
         self.bp_mode = None
+        if options is not None:
+            random = options.get('random', random)
+            context = options.get('context', context)
         obs = self._reset_env(random=random, context=context)
-
-        return obs
+        return obs, {}
 
     def _reset_env(self, random=True, context=None):
 

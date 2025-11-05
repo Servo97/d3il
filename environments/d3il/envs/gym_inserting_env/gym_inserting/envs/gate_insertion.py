@@ -4,7 +4,7 @@ import time
 
 import sys
 
-from gym.spaces import Box
+from gymnasium.spaces import Box
 
 from d3il_sim.utils.sim_path import d3il_path
 from d3il_sim.controllers.Controller import ControllerBase
@@ -164,13 +164,8 @@ class Gate_Insertion_Env(GymEnvWrapper):
 
         sim_factory = MjFactory()
         render_mode = Scene.RenderMode.HUMAN if render else Scene.RenderMode.BLIND
-        scene = sim_factory.create_scene(
-            object_list=obj_list, render=render_mode, dt=0.001
-        )
-        robot = MjRobot(
-            scene,
-            xml_path=d3il_path("./models/mj/robot/panda_rod_invisible.xml"),
-        )
+        scene = sim_factory.create_scene(object_list=obj_list, render=render_mode, dt=0.001)
+        robot = MjRobot(scene, xml_path=d3il_path("./models/mj/robot/panda_rod_invisible.xml"),)
         controller = robot.cartesianPosQuatTrackingController
         # controller = robot.jointTrackingController
         # controller = GymCartesianVelController(robot, fixed_orientation=[0,1,0,0])
@@ -310,9 +305,9 @@ class Gate_Insertion_Env(GymEnvWrapper):
                 box2_quat,
                 box3_pos,
                 box3_quat,
-                # target_box1_pos,
-                # target_box2_pos,
-                # target_box3_pos
+                target_box1_pos,
+                target_box2_pos,
+                target_box3_pos
             ]
         )
 
@@ -367,7 +362,9 @@ class Gate_Insertion_Env(GymEnvWrapper):
         )
 
     def step(self, action, gripper_width=None, desired_vel=None, desired_acc=None):
-        observation, reward, done, _ = super().step(action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc)
+        observation, reward, terminated, truncated, _ = super().step(
+            action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc
+        )
         self.success = self._check_early_termination()
         mean_distance = self.check_mean_dist()
 
@@ -388,12 +385,15 @@ class Gate_Insertion_Env(GymEnvWrapper):
             two_box = 1
             three_box = 1
 
-        return observation, reward, done, {'success':  self.success,
-                                           'mean_distance': mean_distance,
-                                           'mode': self.mode_dict[mode] if len(mode) == 3 else 0,
-                                           'one_box_success': one_box,
-                                           'two_box_success': two_box,
-                                           'three_box_success': three_box}
+        info = {
+            'success': self.success,
+            'mean_distance': mean_distance,
+            'mode': self.mode_dict[mode] if len(mode) == 3 else 0,
+            'one_box_success': one_box,
+            'two_box_success': two_box,
+            'three_box_success': three_box,
+        }
+        return observation, reward, terminated, truncated, info
 
     def check_mode(self):
 
@@ -483,7 +483,9 @@ class Gate_Insertion_Env(GymEnvWrapper):
 
         return False
 
-    def reset(self, random=True, context=None):
+    def reset(self, *, seed: int | None = None, options: dict | None = None, random=True, context=None):
+        if seed is not None:
+            super().seed(seed)
         self.terminated = False
         self.env_step_counter = 0
         self.episode += 1
@@ -492,9 +494,11 @@ class Gate_Insertion_Env(GymEnvWrapper):
         self.modes = []
 
         self.bp_mode = None
+        # if options is not None:
+        #     random = options.get('random', random)
+        #     context = options.get('context', context)
         obs = self._reset_env(random=random, context=context)
-
-        return obs
+        return obs, {}
 
     def _reset_env(self, random=True, context=None):
 

@@ -61,7 +61,6 @@ class MjSceneParser:
         Returns:
             None
         """
-
         xml_element, assets, include_type = mj_loadable.mj_load()
         if include_type == IncludeType.FILE_INCLUDE:
             self._root.append(xml_element)  # append Include instruction

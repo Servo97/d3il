@@ -60,7 +60,7 @@ class Pushing_Sim(BaseSim):
                 print(f'Context {context} Rollout {i}')
                 # training contexts
                 # env.manager.set_index(context)
-                obs = env.reset(random=False, context=test_contexts[context])
+                obs, _ = env.reset(options={"random": False, "context": test_contexts[context]})
                 # test contexts
                 # test_context = env.manager.sample()
                 # obs = env.reset(random=False, context=test_context)
@@ -78,7 +78,8 @@ class Pushing_Sim(BaseSim):
 
                     pred_action = np.concatenate((pred_action, fixed_z, [0, 1, 0, 0]), axis=0)
 
-                    obs, reward, done, info = env.step(pred_action)
+                    obs, reward, terminated, truncated, info = env.step(pred_action)
+                    done = bool(terminated or truncated)
 
                 mode_encoding[context, i] = torch.tensor(info['mode'])
                 successes[context, i] = torch.tensor(info['success'])

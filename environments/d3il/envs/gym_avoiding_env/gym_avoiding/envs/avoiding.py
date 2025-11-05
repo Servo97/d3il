@@ -5,7 +5,7 @@ from environments.d3il.d3il_sim.utils.sim_path import d3il_path
 
 from environments.d3il.d3il_sim.core import Scene
 from environments.d3il.d3il_sim.gyms.gym_env_wrapper import GymEnvWrapper
-from environments.d3il.d3il_sim.core.logger import ObjectLogger, CamLogger
+from environments.d3il.d3il_sim.core.logger import CamLogger
 from environments.d3il.d3il_sim.sims.mj_beta.MjRobot import MjRobot
 from environments.d3il.d3il_sim.sims.mj_beta.MjFactory import MjFactory
 from environments.d3il.d3il_sim.sims import MjCamera
@@ -136,7 +136,7 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
             # self.scene.viewer.cam.distance = 1.6
             # self.scene.viewer.cam.lookat[0] += 0.1
             # self.scene.viewer.cam.lookat[2] -= 0.1
-        except:
+        except Exception:
             pass
 
         # reset the initial state of the robot
@@ -166,9 +166,10 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
         )
 
     def step(self, action, gripper_width=None):
-        observation, reward, done, _ = super().step(action, gripper_width)
+        observation, reward, terminated, truncated, _ = super().step(action, gripper_width)
         self.check_mode()
-        return observation, reward, done, (self.mode_encoding, self.success)
+        info = (self.mode_encoding, self.success)
+        return observation, reward, terminated, truncated, info
 
     def check_mode(self):
         r_x_pos = self.robot.current_c_pos[0]
@@ -245,14 +246,19 @@ class ObstacleAvoidanceEnv(GymEnvWrapper):
 
         return False
 
-    def reset(self, random=True, context=None):
+    def reset(self, *, seed: int | None = None, options: dict | None = None, random=True, context=None):
+        if seed is not None:
+            super().seed(seed)
         self.terminated = False
         self.env_step_counter = 0
         self.episode += 1
         self.reset_mode_encoding()
         self.success = False
+        if options is not None:
+            random = options.get('random', random)
+            context = options.get('context', context)
         obs = self._reset_env(random=random, context=context)
-        return obs
+        return obs, {}
 
     def _reset_env(self, random=True, context=None):
         self.scene.reset()

@@ -5,7 +5,7 @@ from multiprocessing import Pipe, Process
 
 import numpy as np
 
-from environments.d3il.d3il_sim import gym
+import gymnasium as gym
 
 
 def _subprocess_sampling(pipe, policy, env: gym.Env, n_steps: int):
@@ -30,19 +30,20 @@ def _subprocess_sampling(pipe, policy, env: gym.Env, n_steps: int):
 
     # Save initial state and initialize lists
     samples = []
-    start_obs = env.reset()
+    start_obs, _ = env.reset()
 
     for _ in range(n_steps):
         # Use Policy to predict an action
         action = policy.predict(start_obs)
 
         # Observe the next state
-        next_obs, reward, done, _ = env.step(action)
+        next_obs, reward, terminated, truncated, _ = env.step(action)
+        done = bool(terminated or truncated)
         samples.append(np.array([start_obs, action, reward, next_obs], dtype=object))
 
         # If an episode is finished, reset the environment
         if done:
-            start_obs = env.reset()
+            start_obs, _ = env.reset()
         else:
             start_obs = next_obs
 

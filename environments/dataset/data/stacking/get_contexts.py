@@ -1,9 +1,8 @@
-import os
 import numpy as np
 import random
 import pickle
-import gym
-import gym_stacking
+import gymnasium as gym
+from environments.d3il.envs.gym_stacking_env import gym_stacking as _gs  # noqa: F401
 
 env = gym.make('stacking-v0', max_steps_per_episode=1000, render=False)
 

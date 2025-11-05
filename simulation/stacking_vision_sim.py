@@ -1,21 +1,21 @@
 import logging
 import os
-import copy
-
-from multiprocessing import Process
 import multiprocessing as mp
 import random
 
-import cv2
 import numpy as np
 import torch
-import hydra
-import wandb
-
+import importlib
 from simulation.base_sim import BaseSim
 from agents.utils.sim_path import sim_framework_path
+from environments.d3il.envs.gym_stacking_env.gym_stacking.envs.stacking import CubeStacking_Env
 
-from envs.gym_stacking_env.gym_stacking.envs.stacking import CubeStacking_Env
+def _wandb_log(data: dict):
+    try:
+        wb = importlib.import_module("wandb")
+        wb.log(data)
+    except Exception:
+        pass
 
 log = logging.getLogger(__name__)
 
@@ -121,7 +121,7 @@ class Stacking_Sim(BaseSim):
                 # obs = env.reset()
                 # test contexts
                 # test_context = env.manager.sample()
-                obs = env.reset(random=False, context=self.test_contexts[context])
+                obs, _ = env.reset(options={"random": False, "context": self.test_contexts[context]})
 
                 if if_vision:
 
@@ -136,7 +136,8 @@ class Stacking_Sim(BaseSim):
                         pred_action = agent.predict((bp_image, inhand_image, des_j_state), if_vision=if_vision)[0]
                         pred_action[:7] = pred_action[:7] + des_j_state[:7]
 
-                        obs, reward, done, info = env.step(pred_action)
+                        obs, reward, terminated, truncated, info = env.step(pred_action)
+                        done = bool(terminated or truncated)
 
                         des_j_state = pred_action
 
@@ -174,7 +175,8 @@ class Stacking_Sim(BaseSim):
 
                         # print(gripper_width)
 
-                        obs, reward, done, info = env.step(pred_action)
+                        obs, reward, terminated, truncated, info = env.step(pred_action)
+                        done = bool(terminated or truncated)
                         sim_step += 1
 
 
@@ -298,19 +300,19 @@ class Stacking_Sim(BaseSim):
         entropy_2, KL_2 = self.cal_KL(mode_encoding_2_box, successes_2, self.mode_encoding_2, n_mode=6)
         entropy_3, KL_3 = self.cal_KL(mode_encoding, successes, self.mode_encoding_3, n_mode=6)
 
-        wandb.log({'score': (box1_success_rate + box2_success_rate + success_rate)})
+        _wandb_log({'score': (box1_success_rate + box2_success_rate + success_rate)})
 
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/entropy_3': entropy_3})
-        wandb.log({'Metrics/KL_3': KL_3})
+        _wandb_log({'Metrics/successes': success_rate})
+        _wandb_log({'Metrics/entropy_3': entropy_3})
+        _wandb_log({'Metrics/KL_3': KL_3})
 
-        wandb.log({'Metrics/successes_1_box': box1_success_rate})
-        wandb.log({'Metrics/entropy_1': entropy_1})
-        wandb.log({'Metrics/KL_1': KL_1})
+        _wandb_log({'Metrics/successes_1_box': box1_success_rate})
+        _wandb_log({'Metrics/entropy_1': entropy_1})
+        _wandb_log({'Metrics/KL_1': KL_1})
 
-        wandb.log({'Metrics/successes_2_boxes': box2_success_rate})
-        wandb.log({'Metrics/entropy_2': entropy_2})
-        wandb.log({'Metrics/KL_2': KL_2})
+        _wandb_log({'Metrics/successes_2_boxes': box2_success_rate})
+        _wandb_log({'Metrics/entropy_2': entropy_2})
+        _wandb_log({'Metrics/KL_2': KL_2})
 
         # print(f'Mean Distance {mean_distance.mean().item()}')
         print(f'Successrate {success_rate}')

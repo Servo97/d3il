@@ -63,11 +63,8 @@ class MjScene(Scene):
     def _setup_scene(self):
         for rb in self.robots:
             self.add_object(rb.inhand_cam)
-
-        self.model, self.data = self.mj_scene_parser.create_scene(
-            self.robots, self.surrounding, self.obj_repo.get_obj_list(), self.dt
-        )
-
+            
+        self.model, self.data = self.mj_scene_parser.create_scene(self.robots, self.surrounding, self.obj_repo.get_obj_list(), self.dt)
         self.viewer = None
         if self.render_mode == self.RenderMode.HUMAN:
             self.viewer = Viewer(self.model, self.data)  # Renderer

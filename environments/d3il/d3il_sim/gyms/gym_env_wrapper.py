@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
-import gym
-from gym.utils import seeding
+import gymnasium as gym
+from gymnasium.utils import seeding
 import numpy as np
 
 from environments.d3il.d3il_sim.controllers.Controller import ControllerBase
@@ -9,9 +9,10 @@ from environments.d3il.d3il_sim.core import Scene
 
 
 class GymEnvWrapper(gym.Env, ABC):
-    """Open AI gym_envs environment for tasks using a Panda Franka robot arm with MuJoCo physics."""
+    """Gymnasium-compatible environment for tasks using a Panda Franka robot arm with MuJoCo physics."""
 
-    metadata = {"render.modes": ["human", "rgb_array"], "video.frames_per_second": 50}
+    # Gymnasium metadata keys
+    metadata = {"render_modes": ["human", "rgb_array"], "render_fps": 50}
 
     def __init__(
         self,
@@ -39,6 +40,7 @@ class GymEnvWrapper(gym.Env, ABC):
         self.controller.reset()
 
     def seed(self, seed=None):
+        # Gymnasium prefers seeding via reset(seed=...), but we keep this for compatibility
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
@@ -47,7 +49,7 @@ class GymEnvWrapper(gym.Env, ABC):
         episode is reached, you are responsible for calling `reset()`
         to reset this environment's state.
 
-        Accepts an action and returns a tuple (observation, reward, done, info).
+        Accepts an action and returns a tuple (observation, reward, terminated, truncated, info).
 
         Args:
             action (object): an action provided by the agent
@@ -55,7 +57,8 @@ class GymEnvWrapper(gym.Env, ABC):
         Returns:
             observation (object): agent's observation of the current environment
             reward (float) : amount of reward returned after previous action
-            done (bool): whether the episode has ended, in which case further step() calls will return undefined results
+            terminated (bool): whether the episode terminated due to task-specific success or failure
+            truncated (bool): whether the episode ended due to time limit or external truncation
             info (dict): contains auxiliary diagnostic information (helpful for debugging, and sometimes learning)
         """
         if gripper_width is not None:
@@ -84,20 +87,22 @@ class GymEnvWrapper(gym.Env, ABC):
         self.controller.executeControllerTimeSteps(
             self.robot, self.n_substeps, block=False
         )
-
+        
         observation = self.get_observation()
         reward = self.get_reward()
-        done = self.is_finished()
+        # Split termination reasons into Gymnasium's terminated vs truncated
+        terminated = self.terminated or self._check_early_termination()
+        truncated = self.env_step_counter >= self.max_steps_per_episode - 1
 
         for i in range(self.n_substeps):
             self.scene.next_step()
 
-        debug_info = {}
+        info = {}
         if self.debug:
-            debug_info = self.debug_msg()
+            info = self.debug_msg()
 
         self.env_step_counter += 1
-        return observation, reward, done, debug_info
+        return observation, reward, terminated, truncated, info
 
     @abstractmethod
     def get_observation(self) -> np.ndarray:
@@ -122,19 +127,8 @@ class GymEnvWrapper(gym.Env, ABC):
         return self.terminated
 
     def is_finished(self):
-        """Checks if the robot either exceeded the maximum number of steps or is terminated according to another task
-        dependent metric.
-
-        Returns:
-            True if robot should terminate
-        """
-        if (
-            self.terminated
-            or self._check_early_termination()
-            or self.env_step_counter >= self.max_steps_per_episode - 1
-        ):
-            return True
-        return False
+        """Deprecated helper retained for backwards compatibility. Use terminated/truncated flags from step."""
+        return self.terminated or (self.env_step_counter >= self.max_steps_per_episode - 1)
 
     def debug_msg(self) -> dict:
         """
@@ -149,31 +143,23 @@ class GymEnvWrapper(gym.Env, ABC):
     def _reset_env(self):
         raise NotImplementedError
 
-    def reset(self):
+    def reset(self, *, seed: int | None = None, options: dict | None = None):
+        # Gymnasium reset signature: must return (obs, info)
+        if seed is not None:
+            self.seed(seed)
         self.terminated = False
         self.env_step_counter = 0
         self.episode += 1
-        obs = self._reset_env()
-
-        return obs
+        obs = self._reset_env() if options is None else self._reset_env(**options)
+        info = {}
+        return obs, info
 
     def robot_state(self):
         # Update Robot State
         self.robot.receiveState()
 
-        # joint state
-        joint_pos = self.robot.current_j_pos
-        joint_vel = self.robot.current_j_vel
-
-        # gripper state
-        gripper_vel = self.robot.current_fing_vel
-        gripper_width = [self.robot.gripper_width]
-
-        # end effector state
+        # end effector state (tcp)
         tcp_pos = self.robot.current_c_pos
-        tcp_vel = self.robot.current_c_vel
-        tcp_quad = self.robot.current_c_quat
-
         return tcp_pos
 
         # return np.concatenate(

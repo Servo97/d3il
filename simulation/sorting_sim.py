@@ -4,13 +4,19 @@ import os
 import multiprocessing as mp
 import random
 
-from envs.gym_sorting_env.gym_sorting.envs.sorting import Sorting_Env
+from environments.d3il.envs.gym_sorting_env.gym_sorting.envs.sorting import Sorting_Env
 import numpy as np
 import torch
-import wandb
-
+import importlib
 from simulation.base_sim import BaseSim
 from agents.utils.sim_path import sim_framework_path
+
+def _wandb_log(data: dict):
+    try:
+        wb = importlib.import_module("wandb")
+        wb.log(data)
+    except Exception:
+        pass
 
 log = logging.getLogger(__name__)
 
@@ -76,7 +82,7 @@ class Sorting_Sim(BaseSim):
                 print(f'Context {context} Rollout {i}')
                 # training contexts
                 # env.manager.set_index(context)
-                obs = env.reset(random=False, context=self.test_contexts[context], if_vision=self.if_vision)
+                obs, _ = env.reset(options={"random": False, "context": self.test_contexts[context], "if_vision": self.if_vision})
 
                 # obs = env.reset()
 
@@ -101,7 +107,8 @@ class Sorting_Sim(BaseSim):
                         pred_action = pred_action[0] + des_robot_pos
 
                         pred_action = np.concatenate((pred_action, fixed_z, [0, 1, 0, 0]), axis=0)
-                        obs, reward, done, info = env.step(pred_action)
+                        obs, reward, terminated, truncated, info = env.step(pred_action)
+                        done = bool(terminated or truncated)
 
                         des_robot_pos = pred_action[:2]
 
@@ -129,7 +136,8 @@ class Sorting_Sim(BaseSim):
 
                         pred_action = np.concatenate((pred_action, fixed_z, [0, 1, 0, 0]), axis=0)
 
-                        obs, reward, done, info = env.step(pred_action)
+                        obs, reward, terminated, truncated, info = env.step(pred_action)
+                        done = bool(terminated or truncated)
 
                 mode_encoding[context, i] = torch.tensor(info['mode'])
                 successes[context, i] = torch.tensor(info['success'])
@@ -207,11 +215,11 @@ class Sorting_Sim(BaseSim):
 
         KL = - entropy - log_
 
-        wandb.log({'score': (success_rate - KL)})
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/KL': KL})
-        wandb.log({'Metrics/entropy': entropy})
-        # wandb.log({'Metrics/distance': mean_distance.mean().item()})
+        _wandb_log({'score': (success_rate - KL)})
+        _wandb_log({'Metrics/successes': success_rate})
+        _wandb_log({'Metrics/KL': KL})
+        _wandb_log({'Metrics/entropy': entropy})
+        # _wandb_log({'Metrics/distance': mean_distance.mean().item()})
 
         # print(f'Mean Distance {mean_distance.mean().item()}')
         print(f'Successrate {success_rate}')

@@ -1,0 +1,11 @@
+setup.py
+gym_aligning/__init__.py
+gym_aligning.egg-info/PKG-INFO
+gym_aligning.egg-info/SOURCES.txt
+gym_aligning.egg-info/dependency_links.txt
+gym_aligning.egg-info/requires.txt
+gym_aligning.egg-info/top_level.txt
+gym_aligning/envs/__init__.py
+gym_aligning/envs/aligning.py
+gym_aligning/envs/objects/__init__.py
+gym_aligning/envs/objects/aligning_objects.py

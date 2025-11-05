@@ -1,10 +1,8 @@
 import numpy as np
 import copy
-import time
+ 
 
-import sys
-
-from gym.spaces import Box
+from gymnasium.spaces import Box
 
 from environments.d3il.d3il_sim.utils.sim_path import d3il_path
 from environments.d3il.d3il_sim.core import Scene
@@ -333,10 +331,13 @@ class Block_Push_Env(GymEnvWrapper):
         )
 
     def step(self, action, gripper_width=None, desired_vel=None, desired_acc=None):
-        observation, reward, done, _ = super().step(action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc)
+        observation, reward, terminated, truncated, _ = super().step(
+            action, gripper_width, desired_vel=desired_vel, desired_acc=desired_acc
+        )
         self.success = self._check_early_termination()
         mode, mean_distance = self.check_mode()
-        return observation, reward, done, {'mode': mode, 'success':  self.success, 'mean_distance': mean_distance}
+        info = {'mode': mode, 'success': self.success, 'mean_distance': mean_distance}
+        return observation, reward, terminated, truncated, info
 
     def check_mode(self):
         box_1_pos = self.scene.get_obj_pos(self.push_box1)
@@ -458,16 +459,20 @@ class Block_Push_Env(GymEnvWrapper):
 
         return False
 
-    def reset(self, random=True, context=None):
+    def reset(self, *, seed: int | None = None, options: dict | None = None, random=True, context=None):
+        if seed is not None:
+            super().seed(seed)
         self.terminated = False
         self.env_step_counter = 0
         self.episode += 1
         self.first_visit = -1
 
         self.bp_mode = None
+        if options is not None:
+            random = options.get('random', random)
+            context = options.get('context', context)
         obs = self._reset_env(random=random, context=context)
-
-        return obs
+        return obs, {}
 
     def _reset_env(self, random=True, context=None):
 

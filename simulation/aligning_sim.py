@@ -3,14 +3,20 @@ import os
 
 import multiprocessing as mp
 import random
-from envs.gym_aligning_env.gym_aligning.envs.aligning import Robot_Push_Env
+from environments.d3il.envs.gym_aligning_env.gym_aligning.envs.aligning import Robot_Push_Env
 
 import numpy as np
 import torch
-import wandb
-
+import importlib
 from simulation.base_sim import BaseSim
 from agents.utils.sim_path import sim_framework_path
+
+def _wandb_log(data: dict):
+    try:
+        wb = importlib.import_module("wandb")
+        wb.log(data)
+    except Exception:
+        pass
 
 
 log = logging.getLogger(__name__)
@@ -65,8 +71,8 @@ class Aligning_Sim(BaseSim):
                 # env.manager.set_index(context)
                 # obs = env.reset(random=False, context=test_contexts[context])
 
-                # obs = env.reset()
-                obs = env.reset(random=False, context=test_contexts[context])
+                # obs, _ = env.reset()
+                obs, _ = env.reset(options={"random": False, "context": test_contexts[context]})
 
                 # test contexts
                 # test_context = env.manager.sample()
@@ -85,7 +91,8 @@ class Aligning_Sim(BaseSim):
                         pred_action = pred_action[0] + des_robot_pos
 
                         pred_action = np.concatenate((pred_action, [0, 1, 0, 0]), axis=0)
-                        obs, reward, done, info = env.step(pred_action)
+                        obs, reward, terminated, truncated, info = env.step(pred_action)
+                        done = bool(terminated or truncated)
 
                         des_robot_pos = pred_action[:3]
 
@@ -113,7 +120,8 @@ class Aligning_Sim(BaseSim):
 
                         pred_action = np.concatenate((pred_action, [0, 1, 0, 0]), axis=0)
 
-                        obs, reward, done, info = env.step(pred_action)
+                        obs, reward, terminated, truncated, info = env.step(pred_action)
+                        done = bool(terminated or truncated)
 
                 mode_encoding[context, i] = torch.tensor(info['mode'])
                 successes[context, i] = torch.tensor(info['success'])
@@ -193,10 +201,10 @@ class Aligning_Sim(BaseSim):
         entropy = - (mode_probs * torch.log(mode_probs + 1e-12) / torch.log(
             torch.tensor(n_modes))).sum(1).mean()
 
-        wandb.log({'score': 0.5 * (success_rate + entropy)})
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/entropy': entropy})
-        wandb.log({'Metrics/distance': mean_distance.mean().item()})
+        _wandb_log({'score': 0.5 * (success_rate + entropy)})
+        _wandb_log({'Metrics/successes': success_rate})
+        _wandb_log({'Metrics/entropy': entropy})
+        _wandb_log({'Metrics/distance': mean_distance.mean().item()})
 
         print(f'Mean Distance {mean_distance.mean().item()}')
         print(f'Successrate {success_rate}')

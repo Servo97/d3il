@@ -26,8 +26,8 @@ SimulationFramework
 ...
 ```
 
-## Register gym environment
-In order to import the environment in other projects, you need to register each gym environment manually. 
+## Register Gymnasium environment
+In order to import the environment in other projects, you need to register each Gymnasium environment manually. 
 
 For example, to register the Pushing environment:
 
@@ -48,11 +48,11 @@ Based the 6 tasks we defined, you can easily make any task you want.
             └── objects/            # objects implementation
                 └── bp_objects.py   
             aligning.py           # Pushing environment definition
-        __init__.py                 # gym register
-    setup.py                        # setup for gym package
+        __init__.py                 # gymnasium register
+    setup.py                        # setup for gymnasium package
   ```
 - Create the objects xml files in the `models/mj/common-objects/`
-- Register your gym environment
+- Register your Gymnasium environment
 
 ## Key components for environments
 Take Pushing task for example,
@@ -69,7 +69,7 @@ blocks. Therefore, you should create such a manager to manage your objects for n
     - Create a scene object with `self.sim_factory.create_scene()`.
     - Create the robot object of the class `MjRobot`.
     - Call `super().__init__()`.
-    - Define `self.action_space` and `self.observation_space`.
+    - Define `self.action_space` and `self.observation_space` using `gymnasium.spaces`.
     - Create the dictionaries `self.log_dict` with `ObjectLogger` objects and `self.cam_dict` with
         `CamLogger` objects and add them to the scene with `self.scene.add_logger()`.
 - The environment should implement the following functions:

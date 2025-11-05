@@ -22,7 +22,7 @@ Atalay Donat<sup>1</sup>,
 
 This project encompasses the D3IL Benchmark, comprising 7 robot learning tasks: Avoiding, Pushing,
 Aligning, Sorting, Stacking, Inserting, and Arranging. All these environments are implemented 
-using Mujoco and Gym. The [D3IL](environments/d3il) directory includes the robot controller along with the environment 
+using Mujoco and Gymnasium. The [D3IL](environments/d3il) directory includes the robot controller along with the environment 
 implementations, while the [Agents](agents) directory provides 11 imitation learning methods encompassing 
 both state-based and image-based policies.
 
@@ -96,7 +96,7 @@ We offer a unified interface for integrating new algorithms:
 - Add a training scripts in `scripts/aligning/`
 
 ### Creating Custom Tasks
-Our simulation system, built on Mujoco and Gym, allows the creation of new tasks. In order to create new tasks, please 
+Our simulation system, built on Mujoco and Gymnasium, allows the creation of new tasks. In order to create new tasks, please 
 refer to the [D3il_Guide](environments/d3il/README.md)
 
 After creating your task and recording data, simulate imitation learning methods on your task by following these steps:

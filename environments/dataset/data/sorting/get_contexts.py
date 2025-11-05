@@ -1,10 +1,9 @@
-import os
 import numpy as np
 import random
 import pickle
 
-import gym
-import gym_sorting
+import gymnasium as gym
+from environments.d3il.envs.gym_sorting_env import gym_sorting as _gs  # noqa: F401
 
 num_box = 6
 

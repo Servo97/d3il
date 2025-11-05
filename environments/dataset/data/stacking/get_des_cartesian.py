@@ -1,8 +1,5 @@
 import os
 import numpy as np
-import gym
-import gym_stacking
-import pickle
 
 # env = gym.make('stacking-v0')
 

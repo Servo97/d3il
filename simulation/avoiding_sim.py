@@ -2,13 +2,19 @@ import logging
 import multiprocessing as mp
 import os
 import random
-from envs.gym_avoiding_env.gym_avoiding.envs.avoiding import ObstacleAvoidanceEnv
+from environments.d3il.envs.gym_avoiding_env.gym_avoiding.envs.avoiding import ObstacleAvoidanceEnv
 
 import numpy as np
 import torch
-import wandb
-
+import importlib
 from simulation.base_sim import BaseSim
+
+def _wandb_log(data: dict):
+    try:
+        wb = importlib.import_module("wandb")
+        wb.log(data)
+    except Exception:
+        pass
 
 log = logging.getLogger(__name__)
 
@@ -48,7 +54,7 @@ class Avoiding_Sim(BaseSim):
 
             print(f'core {pid}, Rollout {i}')
 
-            obs = env.reset()
+            obs, _ = env.reset()
 
             pred_action = env.robot_state()
             fixed_z = pred_action[2:]
@@ -65,13 +71,13 @@ class Avoiding_Sim(BaseSim):
 
                 pred_action = np.concatenate((pred_action, fixed_z, [0, 1, 0, 0]), axis=0)
 
-                obs, reward, done, info = env.step(pred_action)
+                obs, reward, terminated, truncated, info = env.step(pred_action)
+                done = bool(terminated or truncated)
 
                 c_pos.append(env.robot.current_c_pos)
 
             c_pos = torch.tensor(np.array(c_pos))[:, :2]
             robot_c_pos[pid * n_trajectories + i, :c_pos.shape[0], :] = c_pos
-
             mode_encoding[pid * n_trajectories + i, :] = torch.tensor(info[0])
             successes[pid * n_trajectories + i] = torch.tensor(info[1])
 
@@ -134,9 +140,9 @@ class Avoiding_Sim(BaseSim):
         mode_dist = counts / np.sum(counts)
         entropy = - np.sum(mode_dist * (np.log(mode_dist) / np.log(24)))
 
-        wandb.log({'score': (success_rate * 0.8 + entropy * 0.2)})
-        wandb.log({'Metrics/successes': success_rate})
-        wandb.log({'Metrics/entropy': entropy})
+        _wandb_log({'score': (success_rate * 0.8 + entropy * 0.2)})
+        _wandb_log({'Metrics/successes': success_rate})
+        _wandb_log({'Metrics/entropy': entropy})
 
         print(f'Successrate {success_rate}')
         print(f'entropy {entropy}')
