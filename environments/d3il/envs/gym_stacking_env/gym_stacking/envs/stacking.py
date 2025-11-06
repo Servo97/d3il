@@ -216,9 +216,10 @@ class CubeStacking_Env(GymEnvWrapper):
         # joint state
         joint_pos = self.robot.current_j_pos
         gripper_width = np.array([self.robot.gripper_width])
-        tcp_quad = self.robot.current_c_quat
+        tcp_pos = self.robot.current_c_pos
+        tcp_quat = self.robot.current_c_quat
 
-        return np.concatenate((joint_pos, gripper_width)), joint_pos, tcp_quad
+        return np.concatenate((joint_pos, gripper_width)), tcp_pos, tcp_quat
         # return np.concatenate((tcp_pos, tcp_quad, gripper_width))
 
     def get_observation(self) -> np.ndarray:
@@ -373,7 +374,7 @@ class CubeStacking_Env(GymEnvWrapper):
         mode = mode.join(mode_encoding)
 
         info = {
-            'mode': mode,
+            # 'mode': mode,
             'success': self.success,
             'success_1': len(mode) > 0,
             'success_2': len(mode) > 1,
