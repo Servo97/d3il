@@ -283,28 +283,35 @@ class Gate_Insertion_Env(GymEnvWrapper):
     def get_observation(self) -> np.ndarray:
         robot_pos = self.robot_state()[:2]
 
-        box1_pos = self.scene.get_obj_pos(self.push_box1)[:2]  # - robot_pos
-        box1_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.push_box1))[-1:])
+        # === START FIX ===
 
-        box2_pos = self.scene.get_obj_pos(self.push_box2)[:2]  # - robot_pos
-        box2_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.push_box2))[-1:])
+        box1_pos = self.scene.get_obj_pos(self.push_box1)[:2]
+        box1_yaw = quat2euler(self.scene.get_obj_quat(self.push_box1))[-1]
+        box1_orient = np.array([np.cos(box1_yaw), np.sin(box1_yaw)])
 
-        box3_pos = self.scene.get_obj_pos(self.push_box3)[:2]  # - robot_pos
-        box3_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.push_box3))[-1:])
+        box2_pos = self.scene.get_obj_pos(self.push_box2)[:2]
+        box2_yaw = quat2euler(self.scene.get_obj_quat(self.push_box2))[-1]
+        box2_orient = np.array([np.cos(box2_yaw), np.sin(box2_yaw)])
 
-        target_box1_pos = self.scene.get_obj_pos(self.target_box1)[:2]  # - robot_pos
-        target_box2_pos = self.scene.get_obj_pos(self.target_box2)[:2]  # - robot_pos
-        target_box3_pos = self.scene.get_obj_pos(self.target_box3)[:2]  # - robot_pos
+        box3_pos = self.scene.get_obj_pos(self.push_box3)[:2]
+        box3_yaw = quat2euler(self.scene.get_obj_quat(self.push_box3))[-1]
+        box3_orient = np.array([np.cos(box3_yaw), np.sin(box3_yaw)])
+        
+        # === END FIX ===
+
+        target_box1_pos = self.scene.get_obj_pos(self.target_box1)[:2]
+        target_box2_pos = self.scene.get_obj_pos(self.target_box2)[:2]
+        target_box3_pos = self.scene.get_obj_pos(self.target_box3)[:2]
 
         env_state = np.concatenate(
             [
                 robot_pos,
                 box1_pos,
-                box1_quat,
+                box1_orient,        # <-- Fixed
                 box2_pos,
-                box2_quat,
+                box2_orient,        # <-- Fixed
                 box3_pos,
-                box3_quat,
+                box3_orient,        # <-- Fixed
                 target_box1_pos,
                 target_box2_pos,
                 target_box3_pos
@@ -312,7 +319,6 @@ class Gate_Insertion_Env(GymEnvWrapper):
         )
 
         return env_state.astype(np.float32)
-        # return np.concatenate([robot_state, env_state])
 
     def start(self):
         self.scene.start()

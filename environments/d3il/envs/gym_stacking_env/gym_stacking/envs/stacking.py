@@ -239,31 +239,29 @@ class CubeStacking_Env(GymEnvWrapper):
         # robot_state = self.robot_state()
 
         red_box_pos = self.scene.get_obj_pos(self.red_box)
-        red_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.red_box))[-1:])
-        # red_box_quat = np.concatenate((np.sin(red_box_quat), np.cos(red_box_quat)))
+        red_box_yaw = quat2euler(self.scene.get_obj_quat(self.red_box))[-1]
+        red_box_orient = np.array([np.cos(red_box_yaw), np.sin(red_box_yaw)])
 
         green_box_pos = self.scene.get_obj_pos(self.green_box)
-        green_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.green_box))[-1:])
-        # green_box_quat = np.concatenate((np.sin(green_box_quat), np.cos(green_box_quat)))
+        green_box_yaw = quat2euler(self.scene.get_obj_quat(self.green_box))[-1]
+        green_box_orient = np.array([np.cos(green_box_yaw), np.sin(green_box_yaw)])
 
         blue_box_pos = self.scene.get_obj_pos(self.blue_box)
-        blue_box_quat = np.tan(quat2euler(self.scene.get_obj_quat(self.blue_box))[-1:])
-        # blue_box_quat = np.concatenate((np.sin(blue_box_quat), np.cos(blue_box_quat)))
+        blue_box_yaw = quat2euler(self.scene.get_obj_quat(self.blue_box))[-1]
+        blue_box_orient = np.array([np.cos(blue_box_yaw), np.sin(blue_box_yaw)])
 
-    # target information not needed for observation vector here
-
+        # target information not needed for observation vector here
         env_state = np.concatenate(
             [
                 j_state,
                 robot_c_pos,
                 robot_c_quat,
                 red_box_pos,
-                red_box_quat,
+                red_box_orient,     # <-- Fixed
                 green_box_pos,
-                green_box_quat,
+                green_box_orient,   # <-- Fixed
                 blue_box_pos,
-                blue_box_quat,
-                # target_pos,
+                blue_box_orient,    # <-- Fixed
             ]
         )
 
